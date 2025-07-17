@@ -1,6 +1,12 @@
 #include "display.h"
 #include "audio_i2c.h"
 #include <stdio.h>
+#include "wav_parse.h"
+#include "sound.h"
+#include "cyhal.h"
+#include "cybsp.h"
+
+#define DEBOUNCE_DELAY_MS_UI 50
 
 const mtb_st7789v_pins_t tft_pins =
 {
@@ -18,8 +24,12 @@ const mtb_st7789v_pins_t tft_pins =
     .rst  = CY8CKIT_028_TFT_PIN_DISPLAY_RST
 };
 
-static sound_selection_t current_sound = SOUND_ARCADE;
-static option_selection_t current_option = OPTION_INFO;
+sound_selection_t current_sound = SOUND_ARCADE;
+option_selection_t current_option = OPTION_INFO;
+
+app_mode_t mode = MODE_SOUND_SELECT;
+wav_info_t info_arcade, info_retro, info_cartoon;
+bool wav_ok_arcade, wav_ok_retro, wav_ok_cartoon;
 
 void update_display(void)
 {
@@ -89,3 +99,90 @@ option_selection_t display_get_current_option(void)
     return current_option;
 }
 
+void ui_init(void)
+{
+    cy_rslt_t result = mtb_st7789v_init8(&tft_pins);
+    CY_ASSERT(result == CY_RSLT_SUCCESS);
+
+    GUI_Init();
+    update_display();
+
+    wav_ok_arcade = wav_parse((const uint8_t*)arcade_data, arcade_data_length, &info_arcade);
+    wav_ok_retro = wav_parse((const uint8_t*)retro_data, retro_data_length, &info_retro);
+    wav_ok_cartoon = wav_parse((const uint8_t*)cartoon_data, cartoon_data_length, &info_cartoon);
+}
+
+void ui_process(void)
+{
+    bool btn1 = (cyhal_gpio_read(CYBSP_USER_BTN) == CYBSP_BTN_PRESSED); // Btn 1 press
+    bool btn2 = (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED); // Btn 2 scroll
+
+    if (mode == MODE_SOUND_SELECT) {
+        if (btn2 && !btn1) {
+            display_next_sound();
+            update_display();
+            cyhal_system_delay_ms(DEBOUNCE_DELAY_MS_UI);
+            while (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
+        } else if (btn1 && !btn2) {
+            display_option_sound();
+            mode = MODE_OPTION_SELECT;
+            cyhal_system_delay_ms(DEBOUNCE_DELAY_MS_UI);
+            while (cyhal_gpio_read(CYBSP_USER_BTN) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
+        }
+    } else if (mode == MODE_OPTION_SELECT) {
+        if (btn2 && !btn1) {
+            display_next_option();
+            display_option_sound();
+            cyhal_system_delay_ms(DEBOUNCE_DELAY_MS_UI);
+            while (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
+        } else if (btn1 && !btn2) {
+            if (display_get_current_option() == OPTION_PLAY) {
+                if (!cyhal_i2s_is_write_pending(&i2s)) {
+                    cyhal_i2s_start_tx(&i2s);
+                    if (display_get_current_sound() == SOUND_ARCADE && wav_ok_arcade) {
+                        uint32_t samples16 = info_arcade.data_bytes / 2;
+                        const int16_t *pcm = (const int16_t*)info_arcade.data;
+                        cyhal_i2s_write_async(&i2s, pcm, samples16);
+                    } else if (display_get_current_sound() == SOUND_RETRO && wav_ok_retro) {
+                        uint32_t samples16 = info_retro.data_bytes / 2;
+                        const int16_t *pcm = (const int16_t*)info_retro.data;
+                        cyhal_i2s_write_async(&i2s, pcm, samples16);
+                    } else if (display_get_current_sound() == SOUND_CARTOON && wav_ok_cartoon) {
+                        uint32_t samples16 = info_cartoon.data_bytes / 2;
+                        const int16_t *pcm = (const int16_t*)info_cartoon.data;
+                        cyhal_i2s_write_async(&i2s, pcm, samples16);
+                    }
+                    cyhal_gpio_write(CYBSP_USER_LED, CYBSP_LED_STATE_ON);
+                }
+            } else if (display_get_current_option() == OPTION_INFO) {
+                char buf[64];
+                wav_info_t *info = NULL;
+                bool valid = false;
+                if (display_get_current_sound() == SOUND_ARCADE && wav_ok_arcade) {
+                    info = &info_arcade; valid = true;
+                } else if (display_get_current_sound() == SOUND_RETRO && wav_ok_retro) {
+                    info = &info_retro; valid = true;
+                } else if (display_get_current_sound() == SOUND_CARTOON && wav_ok_cartoon) {
+                    info = &info_cartoon; valid = true;
+                }
+                GUI_Clear();
+                if (valid && info) {
+                    snprintf(buf, sizeof(buf), "SR:%luHz\nBits:%u\nCh:%u\nBytes:%lu\nPress BTN2 to return",
+                        (unsigned long)info->sample_rate,
+                        (unsigned)info->bits_per_sample,
+                        (unsigned)info->channels,
+                        (unsigned long)info->data_bytes);
+                    GUI_DispStringAt(buf, 0, 100);
+                } else {
+                    GUI_DispStringAt("WAV parse error", 10, 10);
+                }
+            } else if (display_get_current_option() == OPTION_BACK) {
+                GUI_Clear();
+                update_display();
+                mode = MODE_SOUND_SELECT;
+            }
+            cyhal_system_delay_ms(DEBOUNCE_DELAY_MS_UI);
+            while (cyhal_gpio_read(CYBSP_USER_BTN) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
+        }
+    }
+}

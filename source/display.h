@@ -32,6 +32,9 @@ void display_next_option(void);
 void display_option_sound(void);
 void display_audio_info(const wav_info_t *info);
 
+void ui_init(void);
+void ui_process(void);
+
 bool wav_parse(const uint8_t *buf, size_t len, wav_info_t *out);
 
 sound_selection_t display_get_current_sound(void);

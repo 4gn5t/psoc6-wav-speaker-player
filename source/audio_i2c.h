@@ -6,8 +6,6 @@
 #include "cybsp.h"
 #include "cy_pdl.h"
 
-#ifdef USE_AK4954A
-
 // * Macros
 #define MI2C_TIMEOUT_MS     10u         /* in ms */
 #define MCLK_FREQ_HZ        4083000u    /* in Hz (Ideally 4.096 MHz) */
@@ -34,4 +32,3 @@ void i2s_isr_handler(void *arg, cyhal_i2s_event_t event);
 
 #endif
 
-#endif // AUDIO_I2C_H

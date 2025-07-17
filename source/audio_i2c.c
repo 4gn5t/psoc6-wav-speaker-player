@@ -2,8 +2,6 @@
 #include "cyhal.h"
 #include "cybsp.h"
 #include "sound.h"
-
-#ifdef USE_AK4954A
 #include "mtb_ak4954a.h"
 
 cyhal_pwm_t mclk_pwm;
@@ -65,5 +63,3 @@ bool audio_i2c_init_and_codec(void)
 
     return true;
 }
-
-#endif
