@@ -34,5 +34,13 @@
     {
         "asset-name": "recipe-make-cat1a",
         "locked-commit": "release-v2.5.0"
+    },
+    {
+        "asset-name": "sensor-light",
+        "locked-commit": "release-v1.1.0"
+    },
+    {
+        "asset-name": "sensor-motion-bmi160",
+        "locked-commit": "release-v1.1.2"
     }
 ]

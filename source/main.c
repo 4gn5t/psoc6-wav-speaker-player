@@ -42,6 +42,10 @@
 
 #include "cyhal.h"
 #include "cybsp.h"
+#include "cy_pdl.h"
+#include "GUI.h"
+#include "mtb_st7789v.h"
+#include "cy8ckit_028_tft_pins.h" 
 
 #include "sound.h"
 
@@ -88,9 +92,6 @@ cyhal_clock_t pll_clock;
 cyhal_clock_t fll_clock;
 cyhal_clock_t system_clock;
 
-extern const int16_t wave_data[]; 
-
-
 /* HAL Configs */
 #ifdef USE_AK4954A
 const cyhal_i2c_cfg_t mi2c_config = {
@@ -113,6 +114,42 @@ const cyhal_i2s_config_t i2s_config = {
     .word_length    = 16,       /* In bits */
     .sample_rate_hz = 16000,    /* In Hz */
 };
+
+const mtb_st7789v_pins_t tft_pins =
+{
+    .db08 = CY8CKIT_028_TFT_PIN_DISPLAY_DB8,
+    .db09 = CY8CKIT_028_TFT_PIN_DISPLAY_DB9,
+    .db10 = CY8CKIT_028_TFT_PIN_DISPLAY_DB10,
+    .db11 = CY8CKIT_028_TFT_PIN_DISPLAY_DB11,
+    .db12 = CY8CKIT_028_TFT_PIN_DISPLAY_DB12,
+    .db13 = CY8CKIT_028_TFT_PIN_DISPLAY_DB13,
+    .db14 = CY8CKIT_028_TFT_PIN_DISPLAY_DB14,
+    .db15 = CY8CKIT_028_TFT_PIN_DISPLAY_DB15,
+    .nrd  = CY8CKIT_028_TFT_PIN_DISPLAY_NRD,
+    .nwr  = CY8CKIT_028_TFT_PIN_DISPLAY_NWR,
+    .dc   = CY8CKIT_028_TFT_PIN_DISPLAY_DC,
+    .rst  = CY8CKIT_028_TFT_PIN_DISPLAY_RST
+};
+
+/* Sound enum */
+typedef enum {
+    SOUND_ARCADE = 0,
+    SOUND_RETRO = 1
+} sound_selection_t;
+
+sound_selection_t current_sound = SOUND_ARCADE;
+
+void update_display(void)
+{
+    GUI_Clear();
+    GUI_DispString("Select sound:\n");
+    if (current_sound == SOUND_ARCADE) {
+        GUI_DispString("\n> Arcade\n  Retro");
+    } else {
+        GUI_DispString("\n  Arcade\n> Retro");
+    }
+    GUI_DispString("\n\nBTN2: scroll\nBTN1: play");
+}
 
 /*******************************************************************************
 * Function Name: main
@@ -143,8 +180,14 @@ int main(void)
         CY_ASSERT(0);
     }
 
-    /* Enable global interrupts */
     __enable_irq();
+
+    /* Initialize display controller */
+    result = mtb_st7789v_init8(&tft_pins);
+    CY_ASSERT(result == CY_RSLT_SUCCESS);
+
+    GUI_Init();
+    update_display();
 
     /* Init the clocks */
     clock_init();
@@ -192,49 +235,29 @@ int main(void)
     for(;;)
     {
         cyhal_syspm_sleep();
-        /* Check if the button was pressed */
-        if (cyhal_gpio_read(CYBSP_USER_BTN) == CYBSP_BTN_PRESSED)
-        {
-            /* Check if I2S is transmitting */
-            if (cyhal_i2s_is_write_pending(&i2s))
-            {
-                /* If already transmitting, don't do anything */
-            }
-            else
-            {
-                /* Start the I2S TX */
+
+        bool btn1 = (cyhal_gpio_read(CYBSP_USER_BTN) == CYBSP_BTN_PRESSED);
+        bool btn2 = (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED);
+
+        if (btn2 && !btn1) {
+            current_sound = (current_sound == SOUND_ARCADE) ? SOUND_RETRO : SOUND_ARCADE;
+            update_display();
+            cyhal_system_delay_ms(DEBOUNCE_DELAY_MS);
+            while (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
+        }
+        else if (btn1 && !btn2) {
+            if (!cyhal_i2s_is_write_pending(&i2s)) {
                 cyhal_i2s_start_tx(&i2s);
-
-                /* If not transmitting, initiate a transfer */
-                cyhal_i2s_write_async(&i2s, arcade_data, arcade_data_length);
-
-                /* Turn ON LED to show a transmission */
+                if (current_sound == SOUND_ARCADE) {
+                    cyhal_i2s_write_async(&i2s, arcade_data, arcade_data_length);
+                } else {
+                    cyhal_i2s_write_async(&i2s, retro_data, retro_data_length);
+                }
                 cyhal_gpio_write(CYBSP_USER_LED, CYBSP_LED_STATE_ON);
             }
-
-            /* Debounce delay */
             cyhal_system_delay_ms(DEBOUNCE_DELAY_MS);
 
-        } else if (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) {
-            /* Check if I2S is transmitting */
-            if (cyhal_i2s_is_write_pending(&i2s))
-            {
-                /* If already transmitting, don't do anything */
-            }
-            else
-            {
-                /* Start the I2S TX */
-                cyhal_i2s_start_tx(&i2s);
-
-                /* If not transmitting, initiate a transfer */
-                cyhal_i2s_write_async(&i2s, retro_data, retro _data_length);
-
-                /* Turn ON LED to show a transmission */
-                cyhal_gpio_write(CYBSP_USER_LED, CYBSP_LED_STATE_ON);
-            }
-
-            /* Debounce delay */
-            cyhal_system_delay_ms(DEBOUNCE_DELAY_MS);
+            while (cyhal_gpio_read(CYBSP_USER_BTN) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
         }
     }
 }
