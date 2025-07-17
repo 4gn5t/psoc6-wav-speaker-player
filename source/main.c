@@ -156,6 +156,9 @@ int main(void)
     cyhal_gpio_init(CYBSP_USER_BTN, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_PULLUP, CYBSP_BTN_OFF);
     /* Enable the button interrupt to wake-up the CPU */
     cyhal_gpio_enable_event(CYBSP_USER_BTN, CYHAL_GPIO_IRQ_FALL, CYHAL_ISR_PRIORITY_DEFAULT, true);
+    // Add User Button 2 initialization
+    cyhal_gpio_init(CYBSP_USER_BTN2, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_PULLUP, CYBSP_BTN_OFF);
+    cyhal_gpio_enable_event(CYBSP_USER_BTN2, CYHAL_GPIO_IRQ_FALL, CYHAL_ISR_PRIORITY_DEFAULT, true);
 
     /* Initialize the Master Clock with a PWM */
     cyhal_pwm_init(&mclk_pwm, MCLK_PIN, NULL);
@@ -203,7 +206,28 @@ int main(void)
                 cyhal_i2s_start_tx(&i2s);
 
                 /* If not transmitting, initiate a transfer */
-                cyhal_i2s_write_async(&i2s, wave_data, wave_data_length);
+                cyhal_i2s_write_async(&i2s, arcade_data, arcade_data_length);
+
+                /* Turn ON LED to show a transmission */
+                cyhal_gpio_write(CYBSP_USER_LED, CYBSP_LED_STATE_ON);
+            }
+
+            /* Debounce delay */
+            cyhal_system_delay_ms(DEBOUNCE_DELAY_MS);
+
+        } else if (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) {
+            /* Check if I2S is transmitting */
+            if (cyhal_i2s_is_write_pending(&i2s))
+            {
+                /* If already transmitting, don't do anything */
+            }
+            else
+            {
+                /* Start the I2S TX */
+                cyhal_i2s_start_tx(&i2s);
+
+                /* If not transmitting, initiate a transfer */
+                cyhal_i2s_write_async(&i2s, retro_data, retro _data_length);
 
                 /* Turn ON LED to show a transmission */
                 cyhal_gpio_write(CYBSP_USER_LED, CYBSP_LED_STATE_ON);

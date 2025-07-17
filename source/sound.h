@@ -40,8 +40,10 @@
 
 	#define WAVE_H
 	#include <stdint.h>
-	extern const int16_t wave_data[];
-	extern const uint32_t wave_data_length;
+	extern const int16_t arcade_data[];
+	extern const uint32_t arcade_data_length;
+	extern const int16_t retro_data[];
+	extern const uint32_t retro_data_length;
 
 #endif
 
