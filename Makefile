@@ -101,7 +101,7 @@ SOURCES=
 INCLUDES=
 
 # Add additional defines to the build process (without a leading -D).
-DEFINES=
+DEFINES+=USE_AK4954A
 
 # Select softfp or hardfp floating point. Default is softfp.
 VFP_SELECT=
