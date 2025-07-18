@@ -40,41 +40,57 @@ void update_display(void)
 
     const char* sound_names[] = { "Arcade", "Retro", "Cartoon"};
     const int num_sounds = sizeof(sound_names) / sizeof(sound_names[0]);
-    int y = 16;
+    int col_width = 120;
+    int row_height = 16;
+    int max_rows = 7;
+
     for (int i = 0; i < num_sounds; ++i) {
+        int col = i / max_rows;
+        int row = i % max_rows;
+        int x = col * col_width;
+        int y = 16 + row * row_height;
+
         if (current_sound == i) {
-            GUI_DispStringAt("> ", 0, y);
+            GUI_DispStringAt("> ", x, y);
         } else {
-            GUI_DispStringAt("  ", 0, y);
+            GUI_DispStringAt("  ", x, y);
         }
-        GUI_DispStringAt(sound_names[i], 16, y);
-        y += 16;
+        GUI_DispStringAt(sound_names[i], x + 16, y);
     }
+
     GUI_DispStringAt("BTN2: scroll", 0, 128);
     GUI_DispStringAt("BTN1: play", 0, 144);
 }
 
 void display_option_sound(void)
 {
-    GUI_Clear();
+    //GUI_Clear();
     GUI_RECT selRect = {0, 16, 240, 64}; 
     GUI_ClearRectEx(&selRect);
 
     GUI_DispStringAt("Choose option:", 0, 0);
     const char* option_names[] = { "Info", "Play", "Back" };
     const int num_options = sizeof(option_names) / sizeof(option_names[0]);
-    int y = 16;
+    int col_width = 120;
+    int row_height = 16;
+    int max_rows = 7;
+
     for (int i = 0; i < num_options; ++i) {
+        int col = i / max_rows;
+        int row = i % max_rows;
+        int x = col * col_width;
+        int y = 16 + row * row_height;
+
         if (current_option == i) {
-            GUI_DispStringAt("> ", 0, y);
+            GUI_DispStringAt("> ", x, y);
         } else {
-            GUI_DispStringAt("  ", 0, y);
+            GUI_DispStringAt("  ", x, y);
         }
-        GUI_DispStringAt(option_names[i], 16, y);
-        y += 16;
+        GUI_DispStringAt(option_names[i], x + 16, y);
     }
+
     GUI_DispStringAt("BTN2: scroll", 0, 128);
-    GUI_DispStringAt("BTN1: play", 0, 144);
+    GUI_DispStringAt("BTN1: select", 0, 144);
 }
 
 void display_next_sound(void)
