@@ -71,7 +71,7 @@ bool audio_set_sample_rate(uint32_t fs_hz)
     switch(fs_hz)
     {
         case 16000: mclk_mult = 256; cm_bits = AK4954A_MODE_CTRL2_CM_256fs; fs_bits = AK4954A_MODE_CTRL2_FS_16kHz; break;
-        case 44100: mclk_mult = 256; cm_bits = AK4954A_MODE_CTRL2_CM_256fs; fs_bits = AK4954A_MODE_CTRL2_FS_44p1kHz; break;
+        case 44100: mclk_mult = 512; cm_bits = AK4954A_MODE_CTRL2_CM_512fs; fs_bits = AK4954A_MODE_CTRL2_FS_44p1kHz; break; 
         case 48000: mclk_mult = 256; cm_bits = AK4954A_MODE_CTRL2_CM_256fs; fs_bits = AK4954A_MODE_CTRL2_FS_48kHz; break;
         default:    return false;
     }
@@ -99,9 +99,9 @@ bool audio_set_sample_rate(uint32_t fs_hz)
 
     cyhal_i2s_config_t cfg = i2s_config;
     cfg.sample_rate_hz = fs_hz;
-    cyhal_i2s_init(&i2s, &i2s_pins, NULL, &cfg, &audio_clock);
+    cy_rslt_t rslt = cyhal_i2s_init(&i2s, &i2s_pins, NULL, &cfg, &audio_clock);
     cyhal_i2s_register_callback(&i2s, i2s_isr_handler, NULL);
     cyhal_i2s_enable_event(&i2s, CYHAL_I2S_ASYNC_TX_COMPLETE, CYHAL_ISR_PRIORITY_DEFAULT, true);
 
-    return true;
+    return (rslt == CY_RSLT_SUCCESS);
 }

@@ -63,14 +63,10 @@ int main(void)
     static FATFS fs;
     FRESULT fres = f_mount(&fs, "", 1);
     if (fres != FR_OK) {
-        GUI_DispStringAt("Failed SD card", 100, 10);
+        GUI_DispStringAt("Failed SD card", 100, 0);
     } else {
         scan_wav_files_sd_card();
-        GUI_DispStringAt("SD card mounted", 100, 10);
-        GUI_DispStringAt("WAV files found:", 100, 30);
-        for (uint8_t i = 0; i < wav_file_count && i < 6; i++) {
-            GUI_DispStringAt(wav_file_names[i], 100, 70 + (i * 20));
-        }
+        GUI_DispStringAt("SD card mounted", 100, 0);
     }
     
     for(;;)
