@@ -8,5 +8,7 @@
 	extern const uint32_t retro_data_length;
 	extern const uint8_t cartoon_data[];
 	extern const uint32_t cartoon_data_length;
+	extern const uint8_t game_over_data[];
+	extern const uint32_t game_over_data_length;
 
 #endif

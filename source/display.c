@@ -28,8 +28,8 @@ sound_selection_t current_sound = SOUND_ARCADE;
 option_selection_t current_option = OPTION_INFO;
 
 app_mode_t mode = MODE_SOUND_SELECT;
-wav_info_t info_arcade, info_retro, info_cartoon;
-bool wav_ok_arcade, wav_ok_retro, wav_ok_cartoon;
+wav_info_t info_arcade, info_retro, info_cartoon, info_game_over;
+bool wav_ok_arcade, wav_ok_retro, wav_ok_cartoon, wav_ok_game_over;
 
 void update_display(void)
 {
@@ -38,7 +38,7 @@ void update_display(void)
 
     GUI_DispStringAt("Select sound:", 0, 0);
 
-    const char* sound_names[] = { "Arcade", "Retro", "Cartoon"};
+    const char* sound_names[] = { "Arcade", "Retro", "Cartoon", "Game Over" };
     const int num_sounds = sizeof(sound_names) / sizeof(sound_names[0]);
     int col_width = 120;
     int row_height = 16;
@@ -64,7 +64,7 @@ void update_display(void)
 
 void display_option_sound(void)
 {
-    //GUI_Clear();
+    GUI_Clear(); 
     GUI_RECT selRect = {0, 16, 240, 64}; 
     GUI_ClearRectEx(&selRect);
 
@@ -95,7 +95,7 @@ void display_option_sound(void)
 
 void display_next_sound(void)
 {
-    const int num_sounds = 3;
+    const int num_sounds = 4;
     current_sound = (current_sound + 1) % num_sounds;
 }
 
@@ -126,6 +126,7 @@ void ui_init(void)
     wav_ok_arcade = wav_parse((const uint8_t*)arcade_data, arcade_data_length, &info_arcade);
     wav_ok_retro = wav_parse((const uint8_t*)retro_data, retro_data_length, &info_retro);
     wav_ok_cartoon = wav_parse((const uint8_t*)cartoon_data, cartoon_data_length, &info_cartoon);
+    wav_ok_game_over = wav_parse((const uint8_t*)game_over_data, game_over_data_length, &info_game_over);
 }
 
 void ui_process(void)
@@ -154,21 +155,28 @@ void ui_process(void)
         } else if (btn1 && !btn2) {
             if (display_get_current_option() == OPTION_PLAY) {
                 if (!cyhal_i2s_is_write_pending(&i2s)) {
-                    cyhal_i2s_start_tx(&i2s);
+                    wav_info_t *info = NULL;
+                    bool valid = false;
                     if (display_get_current_sound() == SOUND_ARCADE && wav_ok_arcade) {
-                        uint32_t samples16 = info_arcade.data_bytes / 2;
-                        const int16_t *pcm = (const int16_t*)info_arcade.data;
-                        cyhal_i2s_write_async(&i2s, pcm, samples16);
+                        info = &info_arcade; valid = true;
                     } else if (display_get_current_sound() == SOUND_RETRO && wav_ok_retro) {
-                        uint32_t samples16 = info_retro.data_bytes / 2;
-                        const int16_t *pcm = (const int16_t*)info_retro.data;
-                        cyhal_i2s_write_async(&i2s, pcm, samples16);
+                        info = &info_retro; valid = true;
                     } else if (display_get_current_sound() == SOUND_CARTOON && wav_ok_cartoon) {
-                        uint32_t samples16 = info_cartoon.data_bytes / 2;
-                        const int16_t *pcm = (const int16_t*)info_cartoon.data;
-                        cyhal_i2s_write_async(&i2s, pcm, samples16);
+                        info = &info_cartoon; valid = true;
+                    } else if (display_get_current_sound() == SOUND_GAME_OVER && wav_ok_game_over) {
+                        info = &info_game_over; valid = true;
                     }
-                    cyhal_gpio_write(CYBSP_USER_LED, CYBSP_LED_STATE_ON);
+                    if (valid && info) {
+                        if (!audio_set_sample_rate(info->sample_rate)) {
+                            GUI_DispStringAt("Unsupported sample rate", 10, 10);
+                        } else {
+                            cyhal_i2s_start_tx(&i2s);
+                            uint32_t samples16 = info->data_bytes / 2;
+                            const int16_t *pcm = (const int16_t*)info->data;
+                            cyhal_i2s_write_async(&i2s, pcm, samples16);
+                            cyhal_gpio_write(CYBSP_USER_LED, CYBSP_LED_STATE_ON);
+                        }
+                    }
                 }
             } else if (display_get_current_option() == OPTION_INFO) {
                 char buf[64];
@@ -180,6 +188,8 @@ void ui_process(void)
                     info = &info_retro; valid = true;
                 } else if (display_get_current_sound() == SOUND_CARTOON && wav_ok_cartoon) {
                     info = &info_cartoon; valid = true;
+                } else if (display_get_current_sound() == SOUND_GAME_OVER && wav_ok_game_over) {
+                    info = &info_game_over; valid = true;
                 }
                 GUI_Clear();
                 if (valid && info) {
@@ -192,6 +202,11 @@ void ui_process(void)
                 } else {
                     GUI_DispStringAt("WAV parse error", 10, 10);
                 }
+                while (cyhal_gpio_read(CYBSP_USER_BTN2) != CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
+                cyhal_system_delay_ms(DEBOUNCE_DELAY_MS_UI);
+                while (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
+                GUI_Clear();
+                display_option_sound();
             } else if (display_get_current_option() == OPTION_BACK) {
                 GUI_Clear();
                 update_display();

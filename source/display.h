@@ -12,7 +12,8 @@
 typedef enum {
     SOUND_ARCADE = 0,
     SOUND_RETRO = 1,
-    SOUND_CARTOON = 2
+    SOUND_CARTOON = 2,
+    SOUND_GAME_OVER = 3
 } sound_selection_t;
 
 typedef enum {
