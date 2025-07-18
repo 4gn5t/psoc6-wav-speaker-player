@@ -2,6 +2,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "fatfs/diskio.h"
+#include "fatfs/ff.h"
+#include "fatfs/sd_card.h"
 
 typedef struct {
     uint16_t channels;
@@ -13,3 +16,5 @@ typedef struct {
 } wav_info_t;
 
 bool wav_parse(const uint8_t *buf, size_t len, wav_info_t *out);
+bool wav_read_header(FIL *fp, wav_info_t *info);
+bool play_wave(const char *path);

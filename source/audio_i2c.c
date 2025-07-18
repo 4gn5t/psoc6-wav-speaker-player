@@ -1,7 +1,6 @@
 #include "audio_i2c.h"
 #include "cyhal.h"
 #include "cybsp.h"
-#include "sound.h"
 #include "mtb_ak4954a.h"
 
 cyhal_pwm_t mclk_pwm;

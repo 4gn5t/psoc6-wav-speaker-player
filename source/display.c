@@ -2,7 +2,6 @@
 #include "audio_i2c.h"
 #include <stdio.h>
 #include "wav_parse.h"
-#include "sound.h"
 #include "cyhal.h"
 #include "cybsp.h"
 #include "fatfs/diskio.h"
@@ -27,9 +26,8 @@ const mtb_st7789v_pins_t tft_pins =
     .rst  = CY8CKIT_028_TFT_PIN_DISPLAY_RST
 };
 
-int current_sound = 0;
 option_selection_t current_option = OPTION_INFO;
-
+int current_sound = 0;
 app_mode_t mode = MODE_SOUND_SELECT;
 
 void update_display(void)
@@ -63,7 +61,6 @@ void update_display(void)
 
 void display_option_sound(void)
 {
-    GUI_Clear(); 
     GUI_RECT selRect = {0, 16, 240, 64}; 
     GUI_ClearRectEx(&selRect);
 
@@ -122,61 +119,6 @@ void ui_init(void)
     update_display();
 }
 
-bool play_wave(const char *path)
-{
-    FIL file;
-    wav_info_t info;
-    
-    if(f_open(&file, path, FA_READ)!=FR_OK){
-        return false;
-    }
-    if(!wav_read_header(&file, &info)) { 
-        f_close(&file);
-        return false; 
-    }
-    if(info.bits_per_sample!=16) { 
-        f_close(&file);
-        return false; 
-    }
-    if(!audio_set_sample_rate(info.sample_rate)) { 
-        f_close(&file);
-        return false; 
-    }
-    f_lseek(&file, info.data_offset);
-
-    cyhal_i2s_start_tx(&i2s);
-    cyhal_gpio_write(CYBSP_USER_LED, 1);
-
-    uint8_t PCM[4096];
-    uint32_t remain = info.data_bytes;
-
-    while(remain)
-    {
-        UINT to_read_bytes = remain > sizeof(PCM) ? sizeof(PCM) : remain;
-        UINT read_per_iteration;
-
-        if(f_read(&file, PCM, to_read_bytes, &read_per_iteration)!=FR_OK || read_per_iteration==0) {
-            break;
-        }
-
-        size_t samples_to_write = read_per_iteration/2;
-        const int16_t *p16 = (int16_t*)PCM;
-
-        while(samples_to_write) {
-            size_t samples_written = samples_to_write;
-            cyhal_i2s_write(&i2s, p16, &samples_written);
-            samples_to_write -= samples_written;
-            p16  += samples_written;
-        }
-        remain -= read_per_iteration;
-    }
-
-    cyhal_i2s_stop_tx(&i2s);
-    cyhal_gpio_write(CYBSP_USER_LED, 0);
-    f_close(&file);
-    return true;
-}
-
 void ui_process(void)
 {
     bool btn1 = (cyhal_gpio_read(CYBSP_USER_BTN) == CYBSP_BTN_PRESSED);
@@ -189,6 +131,7 @@ void ui_process(void)
             cyhal_system_delay_ms(DEBOUNCE_DELAY_MS_UI);
             while (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
         } else if (btn1 && !btn2) {
+            GUI_Clear();
             display_option_sound();
             mode = MODE_OPTION_SELECT;
             cyhal_system_delay_ms(DEBOUNCE_DELAY_MS_UI);
@@ -202,11 +145,12 @@ void ui_process(void)
             while (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
         } else if (btn1 && !btn2) {
             if (display_get_current_option() == OPTION_PLAY) {
-                if(play_wave(wav_file_names[current_sound])) {
-                    GUI_DispStringAt("Playing...",0,220);
-                } else {
-                    GUI_DispStringAt("Play error",0,220);
-                }
+                GUI_DispStringAt("Playing...", 100, 220);
+                cyhal_gpio_write(CYBSP_USER_LED, 0);
+                play_wave(wav_file_names[current_sound]);
+                cyhal_gpio_write(CYBSP_USER_LED, 1);
+                GUI_Clear();
+                display_option_sound();
             } else if (display_get_current_option() == OPTION_INFO) {
                 int current_sound = display_get_current_sound();
                 FIL f;
@@ -242,3 +186,4 @@ void ui_process(void)
         }
     }
 }
+

@@ -128,3 +128,56 @@ bool wav_read_header(FIL *fp, wav_info_t *info)
     
     return false;
 }
+
+bool play_wave(const char *path)
+{
+    FIL file;
+    wav_info_t info;
+    
+    if(f_open(&file, path, FA_READ)!=FR_OK){
+        return false;
+    }
+    if(!wav_read_header(&file, &info)) { 
+        f_close(&file);
+        return false; 
+    }
+    if(info.bits_per_sample!=16) { 
+        f_close(&file);
+        return false; 
+    }
+    if(!audio_set_sample_rate(info.sample_rate)) { 
+        f_close(&file);
+        return false; 
+    }
+    f_lseek(&file, info.data_offset);
+
+    cyhal_i2s_start_tx(&i2s);
+
+    uint8_t PCM[4096];
+    uint32_t remain = info.data_bytes;
+
+    while(remain)
+    {
+        UINT to_read_bytes = remain > sizeof(PCM) ? sizeof(PCM) : remain;
+        UINT read_per_iteration;
+
+        if(f_read(&file, PCM, to_read_bytes, &read_per_iteration)!=FR_OK || read_per_iteration==0) {
+            break;
+        }
+
+        size_t samples_to_write = read_per_iteration/2;
+        const int16_t *p16 = (int16_t*)PCM;
+
+        while(samples_to_write) {
+            size_t samples_written = samples_to_write;
+            cyhal_i2s_write(&i2s, p16, &samples_written);
+            samples_to_write -= samples_written;
+            p16  += samples_written;
+        }
+        remain -= read_per_iteration;
+    }
+
+    cyhal_i2s_stop_tx(&i2s);
+    f_close(&file);
+    return true;
+}
