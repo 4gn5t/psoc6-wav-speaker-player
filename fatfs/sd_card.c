@@ -256,4 +256,33 @@ cy_rslt_t sd_card_write(uint32_t address, const uint8_t *data, uint32_t *length)
     return CY_RSLT_SUCCESS;
 }
 
+char wav_file_names[MAX_WAV_FILES][FF_MAX_LFN];
+uint8_t wav_file_count;
+
+void scan_wav_files_sd_card(void)
+{
+    DIR dir; FILINFO fno;
+    wav_file_count = 0;
+
+    if(f_opendir(&dir, "/") == FR_OK)
+    {
+        while((f_readdir(&dir, &fno) == FR_OK) && fno.fname[0])
+        {
+            const char *name = fno.fname;
+            if(!(fno.fattrib & AM_DIR))
+            {
+                size_t n = strlen(name);
+                if(n > 4 && strcasecmp(&name[n-4], ".wav") == 0)
+                {
+                    strncpy(wav_file_names[wav_file_count], name, sizeof(wav_file_names[0])-1);
+                    wav_file_names[wav_file_count][sizeof(wav_file_names[0])-1] = '\0';
+                    if(++wav_file_count >= MAX_WAV_FILES) break;
+                }
+            }
+        }
+        f_closedir(&dir);
+    }
+}
+
+
 /* [] END OF FILE */

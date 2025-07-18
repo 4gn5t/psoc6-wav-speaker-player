@@ -48,7 +48,12 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "cyhal.h"
+#include "ffconf.h"
+#include "ff.h"
 
+#define MAX_WAV_FILES 16
+extern char wav_file_names[MAX_WAV_FILES][FF_MAX_LFN];
+extern uint8_t wav_file_count;
 
 /******************************************************************************
 * Functions
@@ -60,7 +65,7 @@ uint32_t sd_card_max_sector_num(void);
 uint64_t sd_card_total_mem_bytes(void);
 cy_rslt_t sd_card_read(uint32_t address, uint8_t *data, uint32_t *length);
 cy_rslt_t sd_card_write(uint32_t address, const uint8_t *data, uint32_t *length);
-
+void scan_wav_files_sd_card(void);
 
 #if defined(__cplusplus)
 }
