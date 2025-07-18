@@ -14,6 +14,10 @@ where:
 
 Than use this script to convert the raw audio file to a C array:
 $ python converter_raw_to_C_array.py my_audio.raw wave.c
+
+Better to use:
+$ ffmpeg -i arcade.wav -ac 2 -ar 16000 -c pcm_s16le arcade16k.wav
+$ xxd -i arcade16k.wav > arcade_wav.c
 '''
 
 def convert_raw_to_c_array(raw_filename, c_filename):

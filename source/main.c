@@ -6,6 +6,9 @@
 #include "audio_i2c.h"
 #include "wav_parse.h"
 #include "display.h"
+#include "fatfs/diskio.h"
+#include "fatfs/ff.h"
+
 #include <stdio.h>
 
 void clock_init(void);
@@ -56,6 +59,14 @@ int main(void)
 
     ui_init();
 
+    static FATFS fs;
+    FRESULT fres = f_mount(&fs, "", 1);
+    if (fres != FR_OK) {
+        GUI_DispStringAt("Failed SD card", 100, 10);
+    } else {
+        GUI_DispStringAt("SD card mounted", 100, 10);
+    }
+    
     for(;;)
     {
         cyhal_syspm_sleep();
