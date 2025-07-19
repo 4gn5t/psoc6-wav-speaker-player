@@ -5,6 +5,7 @@
 #include "fatfs/ff.h"
 #include "fatfs/sd_card.h"
 #include "audio_i2c.h"
+#include "display.h"
 
 // Convert 32-bit unsigned little-endian value to host order from byte array
 static inline uint32_t little2big_u32(const uint8_t *data) {
@@ -105,6 +106,10 @@ bool wav_parse(const uint8_t *buf, size_t len, wav_info_t *out)
     out->sample_rate = sample_rate;
     out->bits_per_sample = bits_per_sample;
     out->data_bytes = data_size;
+    out->size_of_file = file_size;
+    out->audio_format = audio_format;      
+    out->byte_rate = byte_rate;            
+    out->block_align = block_align;        
     out->data = data_ptr; 
     out->data_offset = data_offset;
 
@@ -156,7 +161,7 @@ bool play_wave(const char *path)
     uint8_t PCM[4096];
     uint32_t remain = info.data_bytes;
 
-    GUI_DispStringAt("Press BTN2 STOP", 100, 230);
+    GUI_DispStringAt("Press BTN2 STOP", 100, 220);
 
     while(remain)
     {

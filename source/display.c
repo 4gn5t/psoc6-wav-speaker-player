@@ -55,8 +55,8 @@ void update_display(void)
         GUI_DispStringAt(wav_file_names[i], x + 16, y);
     }
 
-    GUI_DispStringAt("BTN2: scroll", 0, 220);
-    GUI_DispStringAt("BTN1: select", 0, 230);
+    GUI_DispStringAt("BTN2: scroll", 0, 200);
+    GUI_DispStringAt("BTN1: select", 0, 220);
 }
 
 void display_option_sound(void)
@@ -85,8 +85,8 @@ void display_option_sound(void)
         GUI_DispStringAt(option_names[i], x + 16, y);
     }
 
-    GUI_DispStringAt("BTN2: scroll", 0, 220);
-    GUI_DispStringAt("BTN1: select", 0, 230);
+    GUI_DispStringAt("BTN2: scroll", 0, 200);
+    GUI_DispStringAt("BTN1: select", 0, 220);
 }
 
 void display_next_sound(void)
@@ -116,6 +116,7 @@ void ui_init(void)
     CY_ASSERT(result == CY_RSLT_SUCCESS);
 
     GUI_Init();
+    GUI_SetFont(GUI_FONT_16B_ASCII);
     update_display();
 }
 
@@ -145,7 +146,7 @@ void ui_process(void)
             while (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) { cyhal_system_delay_ms(1); }
         } else if (btn1 && !btn2) {
             if (display_get_current_option() == OPTION_PLAY) {
-                GUI_DispStringAt("Playing...", 100, 220);
+                GUI_DispStringAt("Playing...", 100, 200);
                 cyhal_gpio_write(CYBSP_USER_LED, 0);
                 play_wave(wav_file_names[current_sound]);
                 cyhal_gpio_write(CYBSP_USER_LED, 1);
@@ -157,14 +158,20 @@ void ui_process(void)
                 wav_info_t info;
                 if(f_open(&f, wav_file_names[current_sound], FA_READ)==FR_OK) {
                     if(wav_read_header(&f, &info)) {
-                        char buf[64];
-                        snprintf(buf, sizeof(buf), "SR:%luHz\nBits:%u\nCh:%u\nBytes:%lu\nPress BTN2 to return",
+                        char buf[128];
+                        snprintf(buf, sizeof(buf),
+                            "SR:%luHz\nBits:%u\nCh:%u\nBytes per sample:%lu\nSize of file:%lu MB\nFormat:%u\nByte rate:%lu\nBlock align:%u\nPress BTN2 to return",
                             (unsigned long)info.sample_rate,
                             (unsigned)info.bits_per_sample,
                             (unsigned)info.channels,
-                            (unsigned long)info.data_bytes);
+                            (unsigned long)info.data_bytes,
+                            (unsigned long)info.size_of_file / (1024 * 1024),  
+                            (unsigned)info.audio_format,
+                            (unsigned long)info.byte_rate,
+                            (unsigned)info.block_align
+                        );
                         GUI_Clear();
-                        GUI_DispStringAt(buf, 0, 100);
+                        GUI_DispStringAt(buf, 0, 60);
                     } else {
                         GUI_Clear();
                         GUI_DispStringAt("WAV parse error", 10, 10);

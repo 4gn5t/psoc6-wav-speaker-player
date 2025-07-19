@@ -59,17 +59,25 @@ int main(void)
     ui_init();
 
     static FATFS fs;
-    FRESULT fres = f_mount(&fs, "", 1);
-    if (fres != FR_OK) {
-        GUI_DispStringAt("Failed SD card", 100, 0);
-    } else {
-        scan_wav_files_sd_card();
-        GUI_DispStringAt("SD card mounted", 100, 0);
-        update_display();
-    }
-    
+    bool sd_card_present_prev = false;
+
     for(;;)
     {
+        FRESULT fres = f_mount(&fs, "", 1);
+        bool sd_card_present = (fres == FR_OK);
+
+        if (sd_card_present != sd_card_present_prev) {
+            GUI_Clear();
+            if (!sd_card_present) {
+                GUI_DispStringAt("Failed SD card", 100, 0);
+            } else {
+                scan_wav_files_sd_card();
+                GUI_DispStringAt("SD card mounted", 100, 0);
+                update_display();
+            }
+            sd_card_present_prev = sd_card_present;
+        }
+
         cyhal_syspm_sleep();
         ui_process(); 
     }
