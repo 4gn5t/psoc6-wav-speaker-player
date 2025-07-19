@@ -156,8 +156,16 @@ bool play_wave(const char *path)
     uint8_t PCM[4096];
     uint32_t remain = info.data_bytes;
 
+    GUI_DispStringAt("Press BTN2 STOP", 100, 230);
+
     while(remain)
     {
+        if (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) {
+            while (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED)
+                cyhal_system_delay_ms(2);
+            break; 
+        }
+
         UINT to_read_bytes = remain > sizeof(PCM) ? sizeof(PCM) : remain;
         UINT read_per_iteration;
 
@@ -177,7 +185,7 @@ bool play_wave(const char *path)
         remain -= read_per_iteration;
     }
 
-    cyhal_i2s_stop_tx(&i2s);
+    cyhal_i2s_stop_tx(&i2s); 
     f_close(&file);
-    return true;
+    return (remain == 0); 
 }

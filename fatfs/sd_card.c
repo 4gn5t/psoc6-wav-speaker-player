@@ -274,10 +274,13 @@ void scan_wav_files_sd_card(void)
                 size_t n = strlen(name);
                 if(n > 4 && strcasecmp(&name[n-4], ".wav") == 0)
                 {
+                    if (name[0] == '.') {
+                        continue;
+                    }
                     strncpy(wav_file_names[wav_file_count], name, sizeof(wav_file_names[0])-1);
                     wav_file_names[wav_file_count][sizeof(wav_file_names[0])-1] = '\0';
                     if(++wav_file_count >= MAX_WAV_FILES) break;
-                }
+                }                     
             }
         }
         f_closedir(&dir);
