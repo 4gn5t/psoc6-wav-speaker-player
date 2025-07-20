@@ -10,26 +10,14 @@
 
 #define DEBOUNCE_DELAY_MS_UI 50
 
-const mtb_st7789v_pins_t tft_pins =
-{
-    .db08 = CY8CKIT_028_TFT_PIN_DISPLAY_DB8,
-    .db09 = CY8CKIT_028_TFT_PIN_DISPLAY_DB9,
-    .db10 = CY8CKIT_028_TFT_PIN_DISPLAY_DB10,
-    .db11 = CY8CKIT_028_TFT_PIN_DISPLAY_DB11,
-    .db12 = CY8CKIT_028_TFT_PIN_DISPLAY_DB12,
-    .db13 = CY8CKIT_028_TFT_PIN_DISPLAY_DB13,
-    .db14 = CY8CKIT_028_TFT_PIN_DISPLAY_DB14,
-    .db15 = CY8CKIT_028_TFT_PIN_DISPLAY_DB15,
-    .nrd  = CY8CKIT_028_TFT_PIN_DISPLAY_NRD,
-    .nwr  = CY8CKIT_028_TFT_PIN_DISPLAY_NWR,
-    .dc   = CY8CKIT_028_TFT_PIN_DISPLAY_DC,
-    .rst  = CY8CKIT_028_TFT_PIN_DISPLAY_RST
-};
-
 option_selection_t current_option = OPTION_INFO;
 int current_sound = 0;
 app_mode_t mode = MODE_SOUND_SELECT;
 
+/**
+ * @brief Updates the display to show the list of available sound files.
+ * Highlights the currently selected sound.
+ */
 void update_display(void)
 {
     GUI_RECT selRect = {0, 16, 240, 64}; 
@@ -59,6 +47,10 @@ void update_display(void)
     GUI_DispStringAt("BTN1: select", 0, 220);
 }
 
+/**
+ * @brief Shows the option menu (Info, Play, Back) for the selected sound.
+ * Highlights the currently selected option.
+ */
 void display_option_sound(void)
 {
     GUI_RECT selRect = {0, 16, 240, 64}; 
@@ -89,27 +81,43 @@ void display_option_sound(void)
     GUI_DispStringAt("BTN1: select", 0, 220);
 }
 
+/**
+ * @brief Moves selection to the next sound file in the list.
+ */
 void display_next_sound(void)
 {
     current_sound = (current_sound + 1) % wav_file_count;
 }
 
+/**
+ * @brief Moves selection to the next option in the menu.
+ */
 void display_next_option(void)
 {
     const int num_options = 3;
     current_option = (current_option + 1) % num_options;
 }
 
+/**
+ * @brief Returns the index of the currently selected sound file.
+ */
 sound_selection_t display_get_current_sound(void)
 {
     return current_sound;
 }
 
+/**
+ * @brief Returns the currently selected option.
+ */
 option_selection_t display_get_current_option(void)
 {
     return current_option;
 }
 
+/**
+ * @brief Initializes the display and GUI.
+ * Sets the font and shows the initial sound selection screen.
+ */
 void ui_init(void)
 {
     cy_rslt_t result = mtb_st7789v_init8(&tft_pins);
@@ -120,6 +128,10 @@ void ui_init(void)
     update_display();
 }
 
+/**
+ * @brief Handles button presses and updates the UI accordingly.
+ * Implements logic for sound selection, option selection, playback, and info display.
+ */
 void ui_process(void)
 {
     bool btn1 = (cyhal_gpio_read(CYBSP_USER_BTN) == CYBSP_BTN_PRESSED);
@@ -157,7 +169,7 @@ void ui_process(void)
                 FIL f;
                 wav_info_t info;
                 if(f_open(&f, wav_file_names[current_sound], FA_READ)==FR_OK) {
-                    if(wav_read_header(&f, &info)) {
+                    if(wav_parse_header_from_file(&f, &info)) {
                         char buf[256];
                         snprintf(buf, sizeof(buf),
                             "SR:%luHz Bits:%u Ch:%u Bytes:%lu Size:%luKB Fmt:%u Rate:%lu Align:%u\nPress BTN2 to return",

@@ -24,16 +24,8 @@
         "locked-commit": "release-v4.26.0"
     },
     {
-        "asset-name": "mtb-hal-cat1",
-        "locked-commit": "release-v2.7.3"
-    },
-    {
         "asset-name": "mtb-pdl-cat1",
         "locked-commit": "release-v3.16.0"
-    },
-    {
-        "asset-name": "recipe-make-cat1a",
-        "locked-commit": "release-v2.5.0"
     },
     {
         "asset-name": "sensor-light",

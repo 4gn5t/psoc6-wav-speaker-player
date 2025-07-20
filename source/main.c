@@ -10,8 +10,25 @@
 #include "fatfs/sd_card.h"
 #include <stdio.h>
 
-void clock_init(void);
-
+/*******************************************************************************
+* Function Name: main
+********************************************************************************
+*
+* Summary:
+* The main function performs the following actions:
+*  1. Initializes the device and board peripherals.
+*  2. Initializes the file system.
+*  3. Mounts the SD card.
+*  4. Initializes the audio subsystem.
+*  5. Starts playing audio files.
+*
+* Parameters:
+*  None
+*
+* Return:
+*  None
+*
+*******************************************************************************/
 int main(void)
 {
     cy_rslt_t result;
@@ -79,28 +96,4 @@ int main(void)
         cyhal_syspm_sleep();
         ui_process(); 
     }
-}
-
-void clock_init(void)
-{
-    /* Initialize the PLL */
-    cyhal_clock_reserve(&pll_clock, &CYHAL_CLOCK_PLL[0]);
-    cyhal_clock_set_frequency(&pll_clock, AUDIO_SYS_CLOCK_HZ, NULL);
-    cyhal_clock_set_enabled(&pll_clock, true, true);
-
-    /* Initialize the audio subsystem clock (HFCLK1) */
-    cyhal_clock_reserve(&audio_clock, &CYHAL_CLOCK_HF[1]);
-    cyhal_clock_set_source(&audio_clock, &pll_clock);
-
-    /* Drop HFCK1 frequency for power savings */
-    cyhal_clock_set_divider(&audio_clock, HFCLK1_CLK_DIVIDER);
-    cyhal_clock_set_enabled(&audio_clock, true, true);
-
-    /* Initialize the system clock (HFCLK0) */
-    cyhal_clock_reserve(&system_clock, &CYHAL_CLOCK_HF[0]);
-    cyhal_clock_set_source(&system_clock, &pll_clock);
-
-    /* Disable the FLL for power savings */
-    cyhal_clock_reserve(&fll_clock, &CYHAL_CLOCK_FLL);
-    cyhal_clock_set_enabled(&fll_clock, false, true);
 }

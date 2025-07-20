@@ -27,6 +27,7 @@ extern cyhal_clock_t system_clock;
 extern const cyhal_i2s_pins_t i2s_pins;
 extern const cyhal_i2s_config_t i2s_config;
 
+void clock_init(void);
 bool audio_i2c_init_and_codec(void);
 bool audio_set_sample_rate(uint32_t fs_hz);
 

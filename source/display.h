@@ -27,6 +27,22 @@ typedef enum {
     MODE_OPTION_SELECT
 } app_mode_t;
 
+const mtb_st7789v_pins_t tft_pins =
+{
+    .db08 = CY8CKIT_028_TFT_PIN_DISPLAY_DB8,
+    .db09 = CY8CKIT_028_TFT_PIN_DISPLAY_DB9,
+    .db10 = CY8CKIT_028_TFT_PIN_DISPLAY_DB10,
+    .db11 = CY8CKIT_028_TFT_PIN_DISPLAY_DB11,
+    .db12 = CY8CKIT_028_TFT_PIN_DISPLAY_DB12,
+    .db13 = CY8CKIT_028_TFT_PIN_DISPLAY_DB13,
+    .db14 = CY8CKIT_028_TFT_PIN_DISPLAY_DB14,
+    .db15 = CY8CKIT_028_TFT_PIN_DISPLAY_DB15,
+    .nrd  = CY8CKIT_028_TFT_PIN_DISPLAY_NRD,
+    .nwr  = CY8CKIT_028_TFT_PIN_DISPLAY_NWR,
+    .dc   = CY8CKIT_028_TFT_PIN_DISPLAY_DC,
+    .rst  = CY8CKIT_028_TFT_PIN_DISPLAY_RST
+};
+
 void update_display(void);
 void display_next_sound(void);
 void display_next_option(void);

@@ -21,8 +21,8 @@ typedef struct {
 
 #define PCM_SAMPLES  1024
 
-bool wav_parse(const uint8_t *buf, size_t len, wav_info_t *out);
-bool wav_read_header(FIL *fp, wav_info_t *info);
+bool wav_parse_header(const uint8_t *buf, size_t len, wav_info_t *out);
+bool wav_parse_header_from_file(FIL *fp, wav_info_t *info);
 bool play_wave_dma(const char *path);
 bool play_wave(const char *path);
 void i2s_dma_async_evt(void *arg, cyhal_i2s_event_t event);

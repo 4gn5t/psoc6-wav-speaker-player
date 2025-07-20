@@ -12,6 +12,7 @@
 #include "cyhal_i2s.h"
 
 #define PCM_SAMPLES  1024
+
 static int16_t pcm_buf[2][PCM_SAMPLES];
 static volatile uint8_t buf_idx = 0;
 static volatile bool need_next_buf = false;
@@ -19,23 +20,43 @@ static volatile bool finished = false;
 static FIL wav_file;
 static uint32_t bytes_left;
 
-// Convert 32-bit unsigned little-endian value to host order from byte array
+/**
+ * @brief Convert a 32-bit little-endian byte array to host uint32_t.
+ * @param data Pointer to 4 bytes in little-endian order.
+ * @return Host-order uint32_t value.
+ */
 static inline uint32_t little2big_u32(const uint8_t *data) {
     return data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
 }
 
-// Convert 16-bit unsigned little-endian value to host order from byte array
+/**
+ * @brief Convert a 16-bit little-endian byte array to host uint16_t.
+ * @param data Pointer to 2 bytes in little-endian order.
+ * @return Host-order uint16_t value.
+ */
 static inline uint16_t little2big_u16(const uint8_t *data) {
     return data[0] | (data[1] << 8);
 }
 
-// Copy n bytes from source to destination and terminate the destination with null character
+/**
+ * @brief Copy a byte array to a null-terminated string.
+ * @param source Pointer to source bytes.
+ * @param destination Buffer for output string.
+ * @param amount Number of bytes to copy.
+ */
 static inline void bytes_to_string(const uint8_t *source, char *destination, size_t amount) {
     memcpy(destination, source, amount);
     destination[amount] = '\0';
 }
 
-bool wav_parse(const uint8_t *buf, size_t len, wav_info_t *out)
+/**
+ * @brief Parse WAV header from buffer and fill wav_info_t.
+ * @param buf Pointer to WAV file data.
+ * @param len Length of buffer.
+ * @param out Pointer to wav_info_t to fill.
+ * @return true if header is valid, false otherwise.
+ */
+bool wav_parse_header(const uint8_t *buf, size_t len, wav_info_t *out)
 {
     if (!buf || len < 44 || !out) return false;
 
@@ -128,7 +149,13 @@ bool wav_parse(const uint8_t *buf, size_t len, wav_info_t *out)
     return true;
 }
 
-bool wav_read_header(FIL *fp, wav_info_t *info)
+/**
+ * @brief Read and parse WAV header from file.
+ * @param fp Pointer to open FIL file object.
+ * @param info Pointer to wav_info_t to fill.
+ * @return true if header is valid, false otherwise.
+ */
+bool wav_parse_header_from_file(FIL *fp, wav_info_t *info)
 {
     uint8_t header[4096];
     UINT read = 0, read_per_iteration;
@@ -138,7 +165,7 @@ bool wav_read_header(FIL *fp, wav_info_t *info)
             return false;
         }
         read += read_per_iteration;
-        if( read >= 44 && wav_parse(header, read, info)) {
+        if( read >= 44 && wav_parse_header(header, read, info)) {
             return true;
         } 
     } while(read < sizeof(header));
@@ -146,6 +173,11 @@ bool wav_read_header(FIL *fp, wav_info_t *info)
     return false;
 }
 
+/**
+ * @brief I2S DMA event handler, sets flag when TX completes.
+ * @param arg Unused.
+ * @param event I2S event type.
+ */
 void i2s_dma_async_evt(void *arg, cyhal_i2s_event_t event)
 {
     (void)arg;
@@ -153,6 +185,10 @@ void i2s_dma_async_evt(void *arg, cyhal_i2s_event_t event)
         need_next_buf = true;
 }
 
+/**
+ * @brief Fill I2S buffer with next chunk of WAV data.
+ * @return true if buffer filled, false if no more data.
+ */
 static bool feed_buffer(void)
 {
     if(bytes_left == 0)
@@ -175,14 +211,19 @@ static bool feed_buffer(void)
     return true;
 }
 
- bool play_wave_dma(const char *path)
+/**
+ * @brief Play a WAV file using I2S DMA.
+ * @param path Path to WAV file.
+ * @return true if playback succeeded, false otherwise.
+ */
+bool play_wave_dma(const char *path)
 {
     if(f_open(&wav_file, path, FA_READ) != FR_OK)
         return false;
 
     wav_info_t info;
 
-    if(!wav_read_header(&wav_file, &info) || info.bits_per_sample != 16 || !audio_set_sample_rate(info.sample_rate))
+    if(!wav_parse_header_from_file(&wav_file, &info) || info.bits_per_sample != 16 || !audio_set_sample_rate(info.sample_rate))
     {
         f_close(&wav_file);
         return false;
