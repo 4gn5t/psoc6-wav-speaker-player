@@ -1,7 +1,7 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
-#include "audio_i2c.h"
+#include "audio_i2s.h"
 #include "GUI.h"
 #include "mtb_st7789v.h"
 #include "cy8ckit_028_tft_pins.h" 

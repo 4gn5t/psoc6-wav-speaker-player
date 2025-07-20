@@ -1,5 +1,5 @@
 #include "display.h"
-#include "audio_i2c.h"
+#include "audio_i2s.h"
 #include <stdio.h>
 #include "wav_parse.h"
 #include "cyhal.h"
@@ -148,7 +148,7 @@ void ui_process(void)
             if (display_get_current_option() == OPTION_PLAY) {
                 GUI_DispStringAt("Playing...", 100, 200);
                 cyhal_gpio_write(CYBSP_USER_LED, 0);
-                play_wave(wav_file_names[current_sound]);
+                play_wave_dma(wav_file_names[current_sound]);
                 cyhal_gpio_write(CYBSP_USER_LED, 1);
                 GUI_Clear();
                 display_option_sound();
@@ -158,14 +158,14 @@ void ui_process(void)
                 wav_info_t info;
                 if(f_open(&f, wav_file_names[current_sound], FA_READ)==FR_OK) {
                     if(wav_read_header(&f, &info)) {
-                        char buf[128];
+                        char buf[256];
                         snprintf(buf, sizeof(buf),
-                            "SR:%luHz\nBits:%u\nCh:%u\nBytes per sample:%lu\nSize of file:%lu MB\nFormat:%u\nByte rate:%lu\nBlock align:%u\nPress BTN2 to return",
+                            "SR:%luHz Bits:%u Ch:%u Bytes:%lu Size:%luKB Fmt:%u Rate:%lu Align:%u\nPress BTN2 to return",
                             (unsigned long)info.sample_rate,
                             (unsigned)info.bits_per_sample,
                             (unsigned)info.channels,
                             (unsigned long)info.data_bytes,
-                            (unsigned long)info.size_of_file / (1024 * 1024),  
+                            (unsigned long)info.size_of_file / (1024),  
                             (unsigned)info.audio_format,
                             (unsigned long)info.byte_rate,
                             (unsigned)info.block_align

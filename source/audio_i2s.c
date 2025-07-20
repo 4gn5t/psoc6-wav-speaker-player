@@ -1,4 +1,4 @@
-#include "audio_i2c.h"
+#include "audio_i2s.h"
 #include "cyhal.h"
 #include "cybsp.h"
 #include "mtb_ak4954a.h"
@@ -31,18 +31,6 @@ static const cyhal_i2c_cfg_t mi2c_config = {
     .address         = 0,
     .frequencyhal_hz = 400000
 };
-
-void i2s_isr_handler(void *arg, cyhal_i2s_event_t event)
-{
-    (void) arg;
-    (void) event;
-
-    /* Stop the I2S TX */
-    cyhal_i2s_stop_tx(&i2s);
-
-    /* Turn off the LED */
-    cyhal_gpio_write(CYBSP_USER_LED, CYBSP_LED_STATE_OFF);
-}
 
 bool audio_i2c_init_and_codec(void)
 {
@@ -99,8 +87,6 @@ bool audio_set_sample_rate(uint32_t fs_hz)
     cyhal_i2s_config_t cfg = i2s_config;
     cfg.sample_rate_hz = fs_hz;
     cy_rslt_t rslt = cyhal_i2s_init(&i2s, &i2s_pins, NULL, &cfg, &audio_clock);
-    cyhal_i2s_register_callback(&i2s, i2s_isr_handler, NULL);
-    cyhal_i2s_enable_event(&i2s, CYHAL_I2S_ASYNC_TX_COMPLETE, CYHAL_ISR_PRIORITY_DEFAULT, true);
 
     return (rslt == CY_RSLT_SUCCESS);
 }

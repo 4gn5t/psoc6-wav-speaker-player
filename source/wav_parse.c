@@ -4,8 +4,20 @@
 #include <stdbool.h>
 #include "fatfs/ff.h"
 #include "fatfs/sd_card.h"
-#include "audio_i2c.h"
+#include "audio_i2s.h"
 #include "display.h"
+#include "cyhal.h"
+#include "cyhal_i2s.h"
+#include "cyhal_i2s_impl.h"
+#include "cyhal_i2s.h"
+
+#define PCM_SAMPLES  1024
+static int16_t pcm_buf[2][PCM_SAMPLES];
+static volatile uint8_t buf_idx = 0;
+static volatile bool need_next_buf = false;
+static volatile bool finished = false;
+static FIL wav_file;
+static uint32_t bytes_left;
 
 // Convert 32-bit unsigned little-endian value to host order from byte array
 static inline uint32_t little2big_u32(const uint8_t *data) {
@@ -134,63 +146,83 @@ bool wav_read_header(FIL *fp, wav_info_t *info)
     return false;
 }
 
-bool play_wave(const char *path)
+void i2s_dma_async_evt(void *arg, cyhal_i2s_event_t event)
 {
-    FIL file;
+    (void)arg;
+    if(event & CYHAL_I2S_ASYNC_TX_COMPLETE)
+        need_next_buf = true;
+}
+
+static bool feed_buffer(void)
+{
+    if(bytes_left == 0)
+        return false;
+
+    UINT need = (bytes_left > PCM_SAMPLES*2) ? PCM_SAMPLES*2 : bytes_left;
+    UINT rd   = 0;
+
+    if(f_read(&wav_file, pcm_buf[buf_idx], need, &rd) != FR_OK || rd == 0)
+        return false;
+
+    bytes_left -= rd;
+
+    if(rd < PCM_SAMPLES*2)
+        memset(((uint8_t*)pcm_buf[buf_idx]) + rd, 0, PCM_SAMPLES*2 - rd);
+
+    cyhal_i2s_write_async(&i2s, pcm_buf[buf_idx], PCM_SAMPLES);
+
+    buf_idx ^= 1;
+    return true;
+}
+
+ bool play_wave_dma(const char *path)
+{
+    if(f_open(&wav_file, path, FA_READ) != FR_OK)
+        return false;
+
     wav_info_t info;
-    
-    if(f_open(&file, path, FA_READ)!=FR_OK){
+
+    if(!wav_read_header(&wav_file, &info) || info.bits_per_sample != 16 || !audio_set_sample_rate(info.sample_rate))
+    {
+        f_close(&wav_file);
         return false;
     }
-    if(!wav_read_header(&file, &info)) { 
-        f_close(&file);
-        return false; 
+
+    f_lseek(&wav_file, info.data_offset);
+    bytes_left = info.data_bytes;
+    
+    cyhal_i2s_enable_event(&i2s, CYHAL_I2S_ASYNC_TX_COMPLETE,CYHAL_ISR_PRIORITY_DEFAULT, false);
+    cyhal_i2s_register_callback(&i2s, i2s_dma_async_evt, NULL);
+    cyhal_i2s_enable_event(&i2s, CYHAL_I2S_ASYNC_TX_COMPLETE, CYHAL_ISR_PRIORITY_DEFAULT, true);
+
+    buf_idx = 0;
+    need_next_buf = false;
+    finished = false;
+
+    if(!feed_buffer()) {
+        f_close(&wav_file);
+        return false;
     }
-    if(info.bits_per_sample!=16) { 
-        f_close(&file);
-        return false; 
-    }
-    if(!audio_set_sample_rate(info.sample_rate)) { 
-        f_close(&file);
-        return false; 
-    }
-    f_lseek(&file, info.data_offset);
 
     cyhal_i2s_start_tx(&i2s);
 
-    uint8_t PCM[4096];
-    uint32_t remain = info.data_bytes;
-
-    GUI_DispStringAt("Press BTN2 STOP", 100, 220);
-
-    while(remain)
+    while(!finished)
     {
-        if (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED) {
-            while (cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED)
-                cyhal_system_delay_ms(2);
-            break; 
+        if(need_next_buf)
+        {
+            need_next_buf = false;
+            if(!feed_buffer())
+                finished = true;
         }
 
-        UINT to_read_bytes = remain > sizeof(PCM) ? sizeof(PCM) : remain;
-        UINT read_per_iteration;
+        if(cyhal_gpio_read(CYBSP_USER_BTN2) == CYBSP_BTN_PRESSED)
+            finished = true;
 
-        if(f_read(&file, PCM, to_read_bytes, &read_per_iteration)!=FR_OK || read_per_iteration==0) {
-            break;
-        }
-
-        size_t samples_to_write = read_per_iteration/2;
-        const int16_t *p16 = (int16_t*)PCM;
-
-        while(samples_to_write) {
-            size_t samples_written = samples_to_write;
-            cyhal_i2s_write(&i2s, p16, &samples_written);
-            samples_to_write -= samples_written;
-            p16  += samples_written;
-        }
-        remain -= read_per_iteration;
+        cyhal_syspm_sleep();
     }
 
-    cyhal_i2s_stop_tx(&i2s); 
-    f_close(&file);
-    return (remain == 0); 
+    cyhal_i2s_stop_tx(&i2s);
+    cyhal_i2s_enable_event(&i2s, CYHAL_I2S_ASYNC_TX_COMPLETE,CYHAL_ISR_PRIORITY_DEFAULT, false);
+    f_close(&wav_file);
+    return true;
 }

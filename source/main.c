@@ -2,7 +2,7 @@
 #include "cybsp.h"
 #include "cy_pdl.h"
 
-#include "audio_i2c.h"
+#include "audio_i2s.h"
 #include "wav_parse.h"
 #include "display.h"
 #include "fatfs/diskio.h"
@@ -47,8 +47,6 @@ int main(void)
 
     /* Initialize the I2S */
     cyhal_i2s_init(&i2s, &i2s_pins, NULL, &i2s_config, &audio_clock);
-    cyhal_i2s_register_callback(&i2s, i2s_isr_handler, NULL);
-    cyhal_i2s_enable_event(&i2s, CYHAL_I2S_ASYNC_TX_COMPLETE, CYHAL_ISR_PRIORITY_DEFAULT, true);
     
 #ifdef USE_AK4954A
     if (!audio_i2c_init_and_codec()) {
